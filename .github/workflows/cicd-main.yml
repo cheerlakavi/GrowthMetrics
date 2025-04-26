@@ -26,7 +26,7 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           # Pull latest code (optional if repo is already cloned)
-          cd ~/ my-python-app
+          cd /home/ubuntu/my-python-app
 
           git pull origin main
 
