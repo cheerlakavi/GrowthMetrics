@@ -16,7 +16,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image
-      run: docker build -t my-python-app .
+      run: docker build -t GrowthMetrics .
 
     - name: SSH and Deploy
       uses: appleboy/ssh-action@v0.1.6
@@ -26,16 +26,18 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           # Pull latest code (optional if repo is already cloned)
-          cd ~/my-python-app
+          cd ~/GrowthMetrics
+
           git pull origin main
 
           # Stop and remove old container
-          docker stop my-python-app || true
-          docker rm my-python-app || true
+          docker stop GrowthMetrics || true
+          docker rm GrowthMetrics || true
 
           # Remove old image
-          docker rmi my-python-app || true
+          docker rmiGrowthMetrics || true
 
           # Build and run new container
-          docker build -t my-python-app .
-          docker run -d -p 5000:5000 --name my-python-app my-python-app
+          docker build -t GrowthMetrics .
+          docker run -d -p 5000:5000 --name GrowthMetrics GrowthMetrics
+
