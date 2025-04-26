@@ -1,56 +1,41 @@
-name: CI/CD Pipeline for GrowthMetrics
+name: Build and Deploy Docker App
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [main]  # Trigger only when pushing to main
 
 jobs:
-  build-test-lint:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+    - name: Build Docker image
+      run: docker build -t my-python-app .
 
-      - name: Run tests
-        run: |
-          pytest || echo "No tests found."
+    - name: SSH and Deploy
+      uses: appleboy/ssh-action@v0.1.6
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          # Pull latest code (optional if repo is already cloned)
+          cd ~/my-python-app
+          git pull origin main
 
-      - name: Run linter
-        run: |
-          pip install flake8
-          flake8 .
+          # Stop and remove old container
+          docker stop my-python-app || true
+          docker rm my-python-app || true
 
-      - name: Build Docker image
-        run: docker build -t growthmetrics:latest .
+          # Remove old image
+          docker rmi my-python-app || true
 
-  deploy:
-    name: Deploy to Test Server
-    needs: build-test-lint
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            cd /home/${{ secrets.USERNAME }}/GrowthMetrics
-            git pull origin main
-            docker-compose down
-            docker-compose up -d --build
+          # Build and run new container
+          docker build -t my-python-app .
+          docker run -d -p 5000:5000 --name my-python-app my-python-app
